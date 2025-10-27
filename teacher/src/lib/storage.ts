@@ -1,0 +1,143 @@
+// Simple storage utility for demo purposes
+// In production, this would be replaced with a real database
+
+export interface Student {
+  id: string;
+  name: string;
+  usn: string;
+  semester: string;
+  email: string;
+  registeredAt: string;
+}
+
+export interface Exam {
+  id: string;
+  title: string;
+  subject: string;
+  topic: string;
+  difficulty: string;
+  questionType: string;
+  numberOfQuestions: number;
+  duration: number;
+  questions: any[];
+  createdAt: string;
+  createdBy: string;
+}
+
+export interface ExamSubmission {
+  id: string;
+  examId: string;
+  studentId: string;
+  studentName: string;
+  studentUSN: string;
+  answers: any[];
+  score: number;
+  totalQuestions: number;
+  submittedAt: string;
+}
+
+// Storage keys
+const STUDENTS_KEY = 'assessai_students';
+const EXAMS_KEY = 'assessai_exams';
+const SUBMISSIONS_KEY = 'assessai_submissions';
+
+// Student functions
+export function saveStudent(student: Omit<Student, 'id' | 'registeredAt'>): Student {
+  const students = getStudents();
+  const newStudent: Student = {
+    ...student,
+    id: generateId(),
+    registeredAt: new Date().toISOString(),
+  };
+  students.push(newStudent);
+  localStorage.setItem(STUDENTS_KEY, JSON.stringify(students));
+  return newStudent;
+}
+
+export function getStudents(): Student[] {
+  if (typeof window === 'undefined') return [];
+  const data = localStorage.getItem(STUDENTS_KEY);
+  return data ? JSON.parse(data) : [];
+}
+
+export function getStudentById(id: string): Student | null {
+  const students = getStudents();
+  return students.find(s => s.id === id) || null;
+}
+
+// Exam functions
+export function saveExam(exam: Omit<Exam, 'id' | 'createdAt'>): Exam {
+  const exams = getExams();
+  const newExam: Exam = {
+    ...exam,
+    id: generateId(),
+    createdAt: new Date().toISOString(),
+  };
+  exams.push(newExam);
+  localStorage.setItem(EXAMS_KEY, JSON.stringify(exams));
+  return newExam;
+}
+
+export function getExams(): Exam[] {
+  if (typeof window === 'undefined') return [];
+  const data = localStorage.getItem(EXAMS_KEY);
+  return data ? JSON.parse(data) : [];
+}
+
+export function getExamById(id: string): Exam | null {
+  const exams = getExams();
+  return exams.find(e => e.id === id) || null;
+}
+
+// Submission functions
+export function saveSubmission(submission: Omit<ExamSubmission, 'id' | 'submittedAt'>): ExamSubmission {
+  const submissions = getSubmissions();
+  const newSubmission: ExamSubmission = {
+    ...submission,
+    id: generateId(),
+    submittedAt: new Date().toISOString(),
+  };
+  submissions.push(newSubmission);
+  localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(submissions));
+  return newSubmission;
+}
+
+export function getSubmissions(): ExamSubmission[] {
+  if (typeof window === 'undefined') return [];
+  const data = localStorage.getItem(SUBMISSIONS_KEY);
+  return data ? JSON.parse(data) : [];
+}
+
+export function getSubmissionsByExamId(examId: string): ExamSubmission[] {
+  const submissions = getSubmissions();
+  return submissions.filter(s => s.examId === examId);
+}
+
+export function getSubmissionsByStudentId(studentId: string): ExamSubmission[] {
+  const submissions = getSubmissions();
+  return submissions.filter(s => s.studentId === studentId);
+}
+
+// Utility functions
+function generateId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+// Get public URL (works on mobile)
+export function getPublicUrl(): string {
+  if (typeof window === 'undefined') return 'http://localhost:3003';
+  
+  // Always use current origin - works on same computer
+  return window.location.origin;
+}
+
+// Generate shareable links
+export function generateRegistrationLink(): string {
+  const baseUrl = getPublicUrl();
+  return `${baseUrl}/register`;
+}
+
+export function generateExamLink(examId: string): string {
+  const baseUrl = getPublicUrl();
+  return `${baseUrl}/exam/${examId}`;
+}

@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+teacher/node_modules/
+
+# Next.js
+teacher/.next/
+teacher/out/
+teacher/build/
+
+# Environment variables
+.env
+.env.local
+.env*.local
+teacher/.env
+teacher/.env.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Vercel
+.vercel

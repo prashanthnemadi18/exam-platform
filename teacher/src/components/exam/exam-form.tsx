@@ -1,0 +1,119 @@
+"use client";
+
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { useState } from "react";
+import { Loader2, CheckCircle } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { mockExamQuestions } from "@/lib/mock-data";
+
+export function ExamForm({ examId }: { examId: string }) {
+  const questions = mockExamQuestions.questions;
+
+  // Dynamically create the Zod schema based on the questions
+  const schemaShape = questions.reduce((acc, q, index) => {
+    acc[`q_${index}`] = z.string().min(1, { message: "Please select an answer." });
+    return acc;
+  }, {} as Record<string, z.ZodString>);
+  
+  const formSchema = z.object(schemaShape);
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+  });
+
+  function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsLoading(true);
+    // Simulate API call to submit exam
+    setTimeout(() => {
+      console.log("Exam submitted for exam ID:", examId, "with values:", values);
+      setIsLoading(false);
+      setIsSuccess(true);
+    }, 1500);
+  }
+
+  if (isSuccess) {
+    return (
+      <Card className="max-w-2xl mx-auto">
+        <CardContent className="text-center space-y-4 py-16">
+          <CheckCircle className="mx-auto h-16 w-16 text-green-500" />
+          <h3 className="text-2xl font-bold font-headline">Exam Submitted!</h3>
+          <p className="text-muted-foreground">
+            Your responses have been recorded. You can now close this window.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="max-w-4xl mx-auto">
+      <CardHeader>
+        <CardTitle>Exam Questions</CardTitle>
+        <CardDescription>Please answer all questions to the best of your ability.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10">
+            {questions.map((q, index) => (
+              <FormField
+                key={index}
+                control={form.control}
+                name={`q_${index}` as any}
+                render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel className="text-base font-bold">
+                      Q{index + 1}: {q.questionText}
+                    </FormLabel>
+                    <FormControl>
+                      {q.options ? (
+                         <RadioGroup
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          className="flex flex-col space-y-2"
+                        >
+                          {q.options.map((option, i) => (
+                            <FormItem key={i} className="flex items-center space-x-3 space-y-0">
+                              <FormControl>
+                                <RadioGroupItem value={option} />
+                              </FormControl>
+                              <FormLabel className="font-normal">{option}</FormLabel>
+                            </FormItem>
+                          ))}
+                        </RadioGroup>
+                      ) : (
+                        <Input placeholder="Your answer..." {...field} />
+                      )}
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ))}
+            
+            <Button type="submit" className="w-full text-lg py-6" disabled={isLoading}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Submit Exam
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
+  );
+}
