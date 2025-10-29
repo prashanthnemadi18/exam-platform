@@ -7,16 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { mockStudents, mockExamResults } from "@/lib/mock-data";
-import { Users, FileText, Trophy, Activity, CheckCircle, BarChart3, Plus } from "lucide-react";
+import { Users, FileText, Trophy, Activity, BarChart3, Plus } from "lucide-react";
 import { GenerateLinkButton } from "@/components/dashboard/generate-link-button";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -26,40 +17,66 @@ export default function DashboardPage() {
   const [realStudents, setRealStudents] = useState<any[]>([]);
   const [realExams, setRealExams] = useState<any[]>([]);
   const [realSubmissions, setRealSubmissions] = useState<any[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const loadData = async () => {
+    setIsRefreshing(true);
+    try {
+      const { getStudents, getExams, getSubmissions } = await import('@/lib/storage');
+      const [students, exams, submissions] = await Promise.all([
+        getStudents(),
+        getExams(),
+        getSubmissions()
+      ]);
+      setRealStudents(students);
+      setRealExams(exams);
+      setRealSubmissions(submissions);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    }
+    setIsRefreshing(false);
+  };
 
   useEffect(() => {
-    // Load real data from storage
-    if (typeof window !== 'undefined') {
-      const { getStudents, getExams, getSubmissions } = require('@/lib/storage');
-      setRealStudents(getStudents());
-      setRealExams(getExams());
-      setRealSubmissions(getSubmissions());
-    }
+    loadData();
   }, []);
 
-  // Combine real and mock data
-  const allStudents = [...realStudents, ...mockStudents];
-  const totalStudents = allStudents.length;
-  const examsConducted = realExams.length + 5; // real + mock
-  const topScorer = mockExamResults.reduce((prev, current) =>
-    prev.score > current.score ? prev : current
-  );
-  const recentRegistrations = allStudents.slice(-5).reverse();
+  // Use real data only
+  const totalStudents = realStudents.length;
+  const examsConducted = realExams.length;
+  
+  // Calculate top scorer from real submissions
+  const topScorer = realSubmissions.length > 0
+    ? realSubmissions.reduce((prev, current) => {
+        const prevPercentage = (prev.score / prev.totalQuestions) * 100;
+        const currentPercentage = (current.score / current.totalQuestions) * 100;
+        return currentPercentage > prevPercentage ? current : prev;
+      })
+    : { studentName: 'No submissions yet', percentage: 0 };
 
   return (
-    <div className="space-y-8">
-       <div className="flex items-center justify-between">
+    <div className="space-y-8 p-6 animate-fade-in">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold font-headline bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold font-headline bg-gradient-to-r from-amber-700 via-orange-600 to-teal-700 bg-clip-text text-transparent">
             Dashboard
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Welcome back, here&apos;s a summary of your activities.
+          <p className="text-gray-600 mt-2 text-lg">
+            Welcome back, here&apos;s your command center.
           </p>
         </div>
         <div className="flex gap-3">
+          <Button
+            onClick={loadData}
+            disabled={isRefreshing}
+            variant="outline"
+            className="border-amber-300 text-amber-800 hover:bg-amber-50 font-semibold hover-lift"
+          >
+            <Activity className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
+          </Button>
           <GenerateLinkButton />
-          <Button asChild className="bg-gradient-to-r from-primary to-accent hover:opacity-90">
+          <Button asChild className="antique-gradient hover:opacity-90 text-white font-semibold shadow-lg hover-lift">
             <Link href="/dashboard/create-exam">
               <Plus className="mr-2 h-4 w-4" />
               Create Exam
@@ -68,131 +85,102 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
-        <Card className="border-l-4 border-l-primary hover:shadow-lg transition-shadow duration-300">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="antique-card border-l-4 border-l-amber-600 hover-lift animate-scale-in group overflow-hidden relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-100/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
+            <CardTitle className="text-sm font-semibold text-amber-900">
               Total Students
             </CardTitle>
-            <div className="p-2 bg-primary/10 rounded-full">
-              <Users className="h-5 w-5 text-primary" />
+            <div className="p-3 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl group-hover:scale-110 transition-transform shadow-md">
+              <Users className="h-5 w-5 text-white" />
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+          <CardContent className="relative z-10">
+            <div className="text-4xl font-bold bg-gradient-to-r from-amber-700 to-orange-600 bg-clip-text text-transparent">
               {totalStudents}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-sm text-gray-600 mt-2">
               students registered on the platform
             </p>
           </CardContent>
         </Card>
-        <Card className="border-l-4 border-l-blue-500 hover:shadow-lg transition-shadow duration-300">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+        
+        <Card className="antique-card border-l-4 border-l-blue-600 hover-lift animate-scale-in group overflow-hidden relative" style={{animationDelay: '0.1s'}}>
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
+            <CardTitle className="text-sm font-semibold text-amber-900">
               Exams Conducted
             </CardTitle>
-            <div className="p-2 bg-blue-500/10 rounded-full">
-              <FileText className="h-5 w-5 text-blue-500" />
+            <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl group-hover:scale-110 transition-transform shadow-md">
+              <FileText className="h-5 w-5 text-white" />
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-blue-500">{examsConducted}</div>
-            <p className="text-xs text-muted-foreground mt-1">
+          <CardContent className="relative z-10">
+            <div className="text-4xl font-bold text-blue-600">{examsConducted}</div>
+            <p className="text-sm text-gray-600 mt-2">
               in total across all subjects
             </p>
           </CardContent>
         </Card>
-        <Card className="border-l-4 border-l-accent hover:shadow-lg transition-shadow duration-300">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Top Scorer</CardTitle>
-            <div className="p-2 bg-accent/10 rounded-full">
-              <Trophy className="h-5 w-5 text-accent" />
+        
+        <Card className="antique-card border-l-4 border-l-teal-600 hover-lift animate-scale-in group overflow-hidden relative" style={{animationDelay: '0.2s'}}>
+          <div className="absolute inset-0 bg-gradient-to-br from-teal-100/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
+            <CardTitle className="text-sm font-semibold text-amber-900">Top Scorer</CardTitle>
+            <div className="p-3 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-xl group-hover:scale-110 transition-transform shadow-md">
+              <Trophy className="h-5 w-5 text-white" />
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-accent">{topScorer.studentName}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              with a score of {topScorer.percentage}%
+          <CardContent className="relative z-10">
+            <div className="text-4xl font-bold text-teal-600">{topScorer.studentName}</div>
+            <p className="text-sm text-gray-600 mt-2">
+              {topScorer.percentage > 0 ? `with a score of ${Math.round((topScorer.score / topScorer.totalQuestions) * 100)}%` : 'Waiting for submissions'}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
-        <Card>
+      <div className="grid gap-6 lg:grid-cols-1">
+        <Card className="antique-card animate-slide-up hover-lift">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              Recent Registrations
-            </CardTitle>
-            <CardDescription>
-              The latest students who have registered.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead className="text-right">Semester</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentRegistrations.map((student) => (
-                  <TableRow key={student.id}>
-                    <TableCell>
-                      <div className="font-medium">{student.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {student.usn}
-                      </div>
-                    </TableCell>
-                    <TableCell>{student.email}</TableCell>
-                    <TableCell className="text-right">{student.semester}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-blue-500" />
+            <CardTitle className="flex items-center gap-3 text-amber-900 text-2xl">
+              <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg shadow-md">
+                <Activity className="h-5 w-5 text-white" />
+              </div>
               Activity Feed
             </CardTitle>
-             <CardDescription>
-              A log of recent important events.
+            <CardDescription className="text-gray-600">
+              A log of recent important events and system activities.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-start gap-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <FileText className="h-4 w-4" />
+            <div className="space-y-5">
+              <div className="flex items-start gap-4 p-4 rounded-xl bg-amber-50/50 hover:bg-amber-100/50 transition-all border border-amber-200/50 hover:border-amber-300 group">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 group-hover:scale-110 transition-transform shadow-md">
+                  <FileText className="h-5 w-5 text-white" />
                 </div>
-                <div>
-                  <p className="text-sm font-medium">New Exam Created</p>
-                  <p className="text-sm text-muted-foreground">&quot;Computer Networks - Midterm&quot; was created. <span className="font-medium">2 hours ago.</span></p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent/10 text-accent">
-                  <Users className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium">5 New Students Registered</p>
-                  <p className="text-sm text-muted-foreground">A new batch of students joined from the registration link. <span className="font-medium">1 day ago.</span></p>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-amber-900">New Exam Created</p>
+                  <p className="text-sm text-gray-600 mt-1">&quot;Computer Networks - Midterm&quot; was created. <span className="text-amber-700 font-semibold">2 hours ago.</span></p>
                 </div>
               </div>
-               <div className="flex items-start gap-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/10 text-green-500">
-                  <BarChart3 className="h-4 w-4" />
+              <div className="flex items-start gap-4 p-4 rounded-xl bg-teal-50/50 hover:bg-teal-100/50 transition-all border border-teal-200/50 hover:border-teal-300 group">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-emerald-500 group-hover:scale-110 transition-transform shadow-md">
+                  <Users className="h-5 w-5 text-white" />
                 </div>
-                <div>
-                  <p className="text-sm font-medium">Analysis Complete</p>
-                  <p className="text-sm text-muted-foreground">Performance analysis for &quot;Data Structures - Test 1&quot; is ready. <span className="font-medium">3 days ago.</span></p>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-amber-900">5 New Students Registered</p>
+                  <p className="text-sm text-gray-600 mt-1">A new batch of students joined from the registration link. <span className="text-teal-700 font-semibold">1 day ago.</span></p>
+                </div>
+              </div>
+              <div className="flex items-start gap-4 p-4 rounded-xl bg-blue-50/50 hover:bg-blue-100/50 transition-all border border-blue-200/50 hover:border-blue-300 group">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 group-hover:scale-110 transition-transform shadow-md">
+                  <BarChart3 className="h-5 w-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-amber-900">Analysis Complete</p>
+                  <p className="text-sm text-gray-600 mt-1">Performance analysis for &quot;Data Structures - Test 1&quot; is ready. <span className="text-blue-700 font-semibold">3 days ago.</span></p>
                 </div>
               </div>
             </div>

@@ -7,10 +7,14 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen w-full flex-col bg-muted/40">
+    <div className="flex min-h-screen w-full relative overflow-hidden">
+      {/* Animated background - Light theme */}
+      <div className="fixed inset-0 grid-pattern opacity-30" />
+      <div className="fixed inset-0 bg-gradient-to-br from-amber-100/40 via-transparent to-teal-100/40" />
+      
       <SidebarNav />
-      <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-        <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
+      <div className="flex flex-col flex-1 sm:pl-16 relative z-10">
+        <main className="flex-1 p-0">
           {children}
         </main>
       </div>

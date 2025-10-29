@@ -57,9 +57,13 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        headline: ["Space Grotesk", "sans-serif"],
-        body: ["PT Sans", "sans-serif"],
-        mono: ["Source Code Pro", "monospace"],
+        headline: ["Inter", "Space Grotesk", "sans-serif"],
+        body: ["Inter", "PT Sans", "sans-serif"],
+        mono: ["JetBrains Mono", "Source Code Pro", "monospace"],
+      },
+      backgroundImage: {
+        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+        'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
       },
     },
   },

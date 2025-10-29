@@ -42,54 +42,78 @@ const EXAMS_KEY = 'assessai_exams';
 const SUBMISSIONS_KEY = 'assessai_submissions';
 
 // Student functions
-export function saveStudent(student: Omit<Student, 'id' | 'registeredAt'>): Student {
-  const students = getStudents();
-  const newStudent: Student = {
-    ...student,
-    id: generateId(),
-    registeredAt: new Date().toISOString(),
-  };
-  students.push(newStudent);
-  localStorage.setItem(STUDENTS_KEY, JSON.stringify(students));
-  return newStudent;
+export async function saveStudent(student: Omit<Student, 'id' | 'registeredAt'>): Promise<Student> {
+  try {
+    const response = await fetch('/api/students', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(student),
+    });
+    
+    if (!response.ok) throw new Error('Failed to save student');
+    return await response.json();
+  } catch (error) {
+    console.error('Error saving student:', error);
+    throw error;
+  }
 }
 
-export function getStudents(): Student[] {
-  if (typeof window === 'undefined') return [];
-  const data = localStorage.getItem(STUDENTS_KEY);
-  return data ? JSON.parse(data) : [];
+export async function getStudents(): Promise<Student[]> {
+  try {
+    const response = await fetch('/api/students', {
+      cache: 'no-store',
+    });
+    
+    if (!response.ok) return [];
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching students:', error);
+    return [];
+  }
 }
 
-export function getStudentById(id: string): Student | null {
-  const students = getStudents();
+export async function getStudentById(id: string): Promise<Student | null> {
+  const students = await getStudents();
   return students.find(s => s.id === id) || null;
 }
 
 // Exam functions
-export function saveExam(exam: Omit<Exam, 'id' | 'createdAt'>): Exam {
-  const exams = getExams();
-  const newExam: Exam = {
-    ...exam,
-    id: generateId(),
-    createdAt: new Date().toISOString(),
-  };
-  exams.push(newExam);
-  localStorage.setItem(EXAMS_KEY, JSON.stringify(exams));
-  return newExam;
+export async function saveExam(exam: Omit<Exam, 'id' | 'createdAt'>): Promise<Exam> {
+  try {
+    const response = await fetch('/api/exams', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(exam),
+    });
+    
+    if (!response.ok) throw new Error('Failed to save exam');
+    return await response.json();
+  } catch (error) {
+    console.error('Error saving exam:', error);
+    throw error;
+  }
 }
 
-export function getExams(): Exam[] {
-  if (typeof window === 'undefined') return [];
-  const data = localStorage.getItem(EXAMS_KEY);
-  return data ? JSON.parse(data) : [];
+export async function getExams(): Promise<Exam[]> {
+  try {
+    const response = await fetch('/api/exams', {
+      cache: 'no-store',
+    });
+    
+    if (!response.ok) return [];
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching exams:', error);
+    return [];
+  }
 }
 
-export function getExamById(id: string): Exam | null {
-  const exams = getExams();
+export async function getExamById(id: string): Promise<Exam | null> {
+  const exams = await getExams();
   return exams.find(e => e.id === id) || null;
 }
 
-// Submission functions
+// Submission functions - keeping localStorage for now (can be migrated later)
 export function saveSubmission(submission: Omit<ExamSubmission, 'id' | 'submittedAt'>): ExamSubmission {
   const submissions = getSubmissions();
   const newSubmission: ExamSubmission = {
@@ -98,7 +122,9 @@ export function saveSubmission(submission: Omit<ExamSubmission, 'id' | 'submitte
     submittedAt: new Date().toISOString(),
   };
   submissions.push(newSubmission);
-  localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(submissions));
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(submissions));
+  }
   return newSubmission;
 }
 
@@ -120,7 +146,7 @@ export function getSubmissionsByStudentId(studentId: string): ExamSubmission[] {
 
 // Utility functions
 function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+  return Date.now().toString(36) + Math.random().toString(36).substring(2);
 }
 
 // Get public URL (works on mobile)

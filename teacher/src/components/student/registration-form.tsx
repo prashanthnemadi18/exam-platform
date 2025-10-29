@@ -57,57 +57,61 @@ export function StudentRegistrationForm() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    // Save student to storage
-    setTimeout(() => {
-      try {
-        // Import storage functions dynamically
-        const { saveStudent } = require('@/lib/storage');
-        const student = saveStudent(values);
-        
-        // Store current student ID for session
-        localStorage.setItem('currentStudentId', student.id);
-        localStorage.setItem('currentStudent', JSON.stringify(student));
-        
-        toast({
-          title: "Registration Successful! 🎉",
-          description: "Redirecting to your dashboard...",
-        });
-        setIsLoading(false);
-        setIsSuccess(true);
-        
-        // Redirect to student dashboard after 2 seconds
-        setTimeout(() => {
-          router.push('/student-dashboard');
-        }, 2000);
-      } catch (error) {
-        toast({
-          variant: "destructive",
-          title: "Registration Failed",
-          description: "Please try again.",
-        });
-        setIsLoading(false);
-      }
-    }, 1500);
+    
+    try {
+      // Import storage functions dynamically
+      const { saveStudent } = await import('@/lib/storage');
+      await saveStudent(values);
+      
+      toast({
+        title: "Registration Successful! 🎉",
+        description: "Your registration has been submitted to the teacher.",
+      });
+      setIsLoading(false);
+      setIsSuccess(true);
+      
+      // Close the page after 3 seconds
+      setTimeout(() => {
+        window.close();
+        // If window.close() doesn't work (some browsers block it), show a message
+        if (!window.closed) {
+          toast({
+            title: "Registration Complete",
+            description: "You can now close this page.",
+          });
+        }
+      }, 3000);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Registration Failed",
+        description: "Please try again.",
+      });
+      setIsLoading(false);
+    }
   }
 
   if (isSuccess) {
     return (
-      <div className="text-center space-y-6 py-8 animate-fade-in">
-        <div className="inline-block p-4 bg-green-100 dark:bg-green-900/20 rounded-full animate-bounce">
-          <CheckCircle className="h-16 w-16 text-green-600 dark:text-green-400" />
+      <div className="text-center space-y-6 py-8 animate-scale-in">
+        <div className="inline-block p-6 bg-gradient-to-br from-green-600 to-emerald-600 rounded-2xl animate-pulse-glow">
+          <CheckCircle className="h-20 w-20 text-white animate-bounce" />
         </div>
-        <div className="space-y-2">
-          <h3 className="text-3xl font-bold font-headline bg-gradient-to-r from-green-600 to-green-400 bg-clip-text text-transparent">
+        <div className="space-y-3">
+          <h3 className="text-4xl font-bold font-headline bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
             Registration Complete!
           </h3>
-          <p className="text-muted-foreground text-base">
-            Redirecting you to your dashboard...
+          <p className="text-gray-300 text-lg">
+            Your registration has been submitted successfully.
+          </p>
+          <p className="text-sm text-gray-400 mt-2">
+            Your teacher will be notified. You can close this page now.
           </p>
         </div>
         <div className="pt-4">
-          <div className="flex items-center justify-center gap-2 text-primary">
+          <div className="flex items-center justify-center gap-2 text-purple-400">
             <Loader2 className="h-5 w-5 animate-spin" />
             <span className="text-sm font-medium">Please wait</span>
           </div>
@@ -118,24 +122,24 @@ export function StudentRegistrationForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <FormField
           control={form.control}
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm font-semibold">Full Name</FormLabel>
+              <FormLabel className="text-sm font-semibold text-white">Full Name</FormLabel>
               <FormControl>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <div className="relative group">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-green-400 transition-colors" />
                   <Input 
                     placeholder="John Doe" 
-                    className="pl-10 h-11 border-2 focus:border-accent transition-colors" 
+                    className="pl-12 h-14 glass-effect border-white/20 focus:border-green-500/50 transition-all text-white placeholder:text-gray-500 rounded-xl" 
                     {...field} 
                   />
                 </div>
               </FormControl>
-              <FormMessage />
+              <FormMessage className="text-red-400" />
             </FormItem>
           )}
         />
@@ -144,18 +148,18 @@ export function StudentRegistrationForm() {
           name="usn"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm font-semibold">USN (University Seat Number)</FormLabel>
+              <FormLabel className="text-sm font-semibold text-white">USN (University Seat Number)</FormLabel>
               <FormControl>
-                <div className="relative">
-                  <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <div className="relative group">
+                  <Hash className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-green-400 transition-colors" />
                   <Input 
                     placeholder="1AB21CS001" 
-                    className="pl-10 h-11 border-2 focus:border-accent transition-colors" 
+                    className="pl-12 h-14 glass-effect border-white/20 focus:border-green-500/50 transition-all text-white placeholder:text-gray-500 rounded-xl" 
                     {...field} 
                   />
                 </div>
               </FormControl>
-              <FormMessage />
+              <FormMessage className="text-red-400" />
             </FormItem>
           )}
         />
@@ -164,23 +168,23 @@ export function StudentRegistrationForm() {
           name="semester"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm font-semibold">Semester</FormLabel>
+              <FormLabel className="text-sm font-semibold text-white">Semester</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
-                  <div className="relative">
-                    <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground z-10 pointer-events-none" />
-                    <SelectTrigger className="pl-10 h-11 border-2 focus:border-accent transition-colors">
+                  <div className="relative group">
+                    <BookOpen className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-10 pointer-events-none" />
+                    <SelectTrigger className="pl-12 h-14 glass-effect border-white/20 focus:border-green-500/50 transition-all text-white rounded-xl">
                       <SelectValue placeholder="Select your semester" />
                     </SelectTrigger>
                   </div>
                 </FormControl>
-                <SelectContent>
+                <SelectContent className="glass-effect border-white/20 text-white">
                   {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
-                    <SelectItem key={sem} value={String(sem)}>Semester {sem}</SelectItem>
+                    <SelectItem key={sem} value={String(sem)} className="hover:bg-white/10">Semester {sem}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <FormMessage />
+              <FormMessage className="text-red-400" />
             </FormItem>
           )}
         />
@@ -189,24 +193,24 @@ export function StudentRegistrationForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm font-semibold">Gmail ID</FormLabel>
+              <FormLabel className="text-sm font-semibold text-white">Gmail ID</FormLabel>
               <FormControl>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <div className="relative group">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-green-400 transition-colors" />
                   <Input 
                     placeholder="student@gmail.com" 
-                    className="pl-10 h-11 border-2 focus:border-accent transition-colors" 
+                    className="pl-12 h-14 glass-effect border-white/20 focus:border-green-500/50 transition-all text-white placeholder:text-gray-500 rounded-xl" 
                     {...field} 
                   />
                 </div>
               </FormControl>
-              <FormMessage />
+              <FormMessage className="text-red-400" />
             </FormItem>
           )}
         />
         <Button 
           type="submit" 
-          className="w-full h-12 bg-gradient-to-r from-accent to-primary hover:opacity-90 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 text-base" 
+          className="w-full h-14 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold shadow-lg hover:shadow-green-500/50 transition-all duration-300 text-base rounded-xl animate-gradient" 
           disabled={isLoading}
         >
           {isLoading ? (

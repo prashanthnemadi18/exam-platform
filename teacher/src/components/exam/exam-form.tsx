@@ -20,8 +20,21 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { mockExamQuestions } from "@/lib/mock-data";
 
-export function ExamForm({ examId }: { examId: string }) {
-  const questions = mockExamQuestions.questions;
+interface ExamFormProps {
+  examId: string;
+  studentData?: {
+    name: string;
+    usn: string;
+    email: string;
+  };
+  examData?: {
+    questions: any[];
+  };
+  timeRemaining?: number;
+}
+
+export function ExamForm({ examId, studentData, examData, timeRemaining }: ExamFormProps) {
+  const questions = examData?.questions || mockExamQuestions.questions;
 
   // Dynamically create the Zod schema based on the questions
   const schemaShape = questions.reduce((acc, q, index) => {
@@ -38,14 +51,47 @@ export function ExamForm({ examId }: { examId: string }) {
     resolver: zodResolver(formSchema),
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    // Simulate API call to submit exam
-    setTimeout(() => {
-      console.log("Exam submitted for exam ID:", examId, "with values:", values);
+    
+    try {
+      // Calculate score
+      let score = 0;
+      const answers = Object.entries(values).map(([key, answer], index) => {
+        const question = questions[index];
+        const isCorrect = answer === question.correctAnswer;
+        if (isCorrect) score++;
+        return {
+          questionIndex: index,
+          answer,
+          isCorrect,
+        };
+      });
+
+      // Submit to API
+      const submission = {
+        examId,
+        studentId: studentData?.usn || 'unknown',
+        studentName: studentData?.name || 'Unknown',
+        studentUSN: studentData?.usn || 'Unknown',
+        studentEmail: studentData?.email || 'unknown@email.com',
+        answers,
+        score,
+        totalQuestions: questions.length,
+      };
+
+      await fetch('/api/submissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(submission),
+      });
+
       setIsLoading(false);
       setIsSuccess(true);
-    }, 1500);
+    } catch (error) {
+      console.error('Error submitting exam:', error);
+      setIsLoading(false);
+    }
   }
 
   if (isSuccess) {
@@ -88,7 +134,7 @@ export function ExamForm({ examId }: { examId: string }) {
                           defaultValue={field.value}
                           className="flex flex-col space-y-2"
                         >
-                          {q.options.map((option, i) => (
+                          {q.options.map((option: string, i: number) => (
                             <FormItem key={i} className="flex items-center space-x-3 space-y-0">
                               <FormControl>
                                 <RadioGroupItem value={option} />

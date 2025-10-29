@@ -63,13 +63,13 @@ export function LoginForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm font-semibold">Email Address</FormLabel>
+              <FormLabel className="text-sm font-semibold text-amber-900">Email Address</FormLabel>
               <FormControl>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
                   <Input 
                     placeholder="teacher@example.com" 
-                    className="pl-10 h-12 border-2 focus:border-primary transition-colors" 
+                    className="pl-10 h-12 border-2 border-amber-200 focus:border-amber-500 transition-colors bg-white text-gray-900" 
                     {...field} 
                   />
                 </div>
@@ -84,18 +84,18 @@ export function LoginForm() {
           render={({ field }) => (
             <FormItem>
               <div className="flex items-center justify-between">
-                <FormLabel className="text-sm font-semibold">Password</FormLabel>
-                <button type="button" className="text-xs text-primary hover:underline">
+                <FormLabel className="text-sm font-semibold text-amber-900">Password</FormLabel>
+                <button type="button" className="text-xs text-amber-700 hover:text-amber-900 hover:underline font-medium">
                   Forgot password?
                 </button>
               </div>
               <FormControl>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
                   <Input 
                     type="password" 
                     placeholder="••••••••" 
-                    className="pl-10 h-12 border-2 focus:border-primary transition-colors" 
+                    className="pl-10 h-12 border-2 border-amber-200 focus:border-amber-500 transition-colors bg-white text-gray-900" 
                     {...field} 
                   />
                 </div>
@@ -106,7 +106,7 @@ export function LoginForm() {
         />
         <Button 
           type="submit" 
-          className="w-full h-12 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 text-base" 
+          className="w-full h-12 antique-gradient hover:opacity-90 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 text-base hover-lift" 
           disabled={isLoading}
         >
           {isLoading ? (

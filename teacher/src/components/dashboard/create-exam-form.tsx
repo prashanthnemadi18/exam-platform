@@ -31,45 +31,18 @@ import {
 } from "@/ai/flows/generate-exam-questions";
 import { toast } from "@/hooks/use-toast";
 
-// Subject and topic data
-const subjects = [
-  {
-    name: "Computer Science",
-    topics: ["Data Structures", "Algorithms", "Operating Systems", "Database Management", "Computer Networks", "Software Engineering"]
-  },
-  {
-    name: "Mathematics",
-    topics: ["Calculus", "Linear Algebra", "Probability", "Statistics", "Discrete Mathematics", "Number Theory"]
-  },
-  {
-    name: "Physics",
-    topics: ["Mechanics", "Thermodynamics", "Electromagnetism", "Optics", "Quantum Physics", "Modern Physics"]
-  },
-  {
-    name: "Chemistry",
-    topics: ["Organic Chemistry", "Inorganic Chemistry", "Physical Chemistry", "Analytical Chemistry", "Biochemistry"]
-  },
-  {
-    name: "Biology",
-    topics: ["Cell Biology", "Genetics", "Evolution", "Ecology", "Human Anatomy", "Microbiology"]
-  },
-  {
-    name: "English",
-    topics: ["Grammar", "Literature", "Writing Skills", "Comprehension", "Poetry", "Drama"]
-  }
-];
+// No predefined subjects - teachers can enter any subject and topics
 
 const formSchema = z.object({
   examTitle: z.string().min(3, {
     message: "Exam title must be at least 3 characters.",
   }),
-  subject: z.string().min(1, {
-    message: "Please select a subject.",
+  subject: z.string().min(2, {
+    message: "Please enter a subject (e.g., Computer Science, History, etc.).",
   }),
-  topic: z.string().min(1, {
-    message: "Please select a topic.",
+  topic: z.string().min(3, {
+    message: "Please enter topics (e.g., Data Structures, World War II, etc.).",
   }),
-  customTopic: z.string().optional(),
   difficulty: z.enum(["Easy", "Medium", "Hard"]),
   questionType: z.enum(["MCQ", "True/False", "Fill in the Blanks"]),
   numberOfQuestions: z.coerce.number().min(1).max(20),
@@ -79,8 +52,6 @@ const formSchema = z.object({
 export function CreateExamForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [generatedQuestions, setGeneratedQuestions] = useState<GenerateExamQuestionsOutput | null>(null);
-  const [selectedSubject, setSelectedSubject] = useState("");
-  const [availableTopics, setAvailableTopics] = useState<string[]>([]);
   const [savedExam, setSavedExam] = useState<any>(null);
   const [examLink, setExamLink] = useState("");
 
@@ -90,7 +61,6 @@ export function CreateExamForm() {
       examTitle: "",
       subject: "",
       topic: "",
-      customTopic: "",
       difficulty: "Medium",
       questionType: "MCQ",
       numberOfQuestions: 5,
@@ -98,15 +68,15 @@ export function CreateExamForm() {
     },
   });
 
-  const handleSaveExam = () => {
+  const handleSaveExam = async () => {
     if (!generatedQuestions) return;
-    
+
     const formValues = form.getValues();
-    const topicToUse = formValues.topic === "Custom" ? formValues.customTopic : formValues.topic;
-    
+    const topicToUse = formValues.topic;
+
     try {
-      const { saveExam, generateExamLink } = require('@/lib/storage');
-      const exam = saveExam({
+      // Create exam object
+      const examData = {
         title: formValues.examTitle,
         subject: formValues.subject,
         topic: topicToUse || formValues.topic,
@@ -115,18 +85,33 @@ export function CreateExamForm() {
         numberOfQuestions: formValues.numberOfQuestions,
         duration: formValues.duration,
         questions: generatedQuestions.questions,
-        createdBy: "teacher", // In real app, get from auth
+        createdBy: "teacher",
+      };
+
+      // Save to database via API
+      const response = await fetch('/api/exams', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(examData),
       });
+
+      if (!response.ok) throw new Error('Failed to save exam');
+
+      const savedExam = await response.json();
       
-      const link = generateExamLink(exam.id);
-      setSavedExam(exam);
+      // Generate exam link
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      const link = `${baseUrl}/exam/${savedExam.id}`;
+      
+      setSavedExam(savedExam);
       setExamLink(link);
-      
+
       toast({
         title: "✅ Exam Saved Successfully!",
-        description: `${exam.title} has been published. Share the exam link with students.`,
+        description: `${savedExam.title} has been published. Share the exam link with students.`,
       });
     } catch (error) {
+      console.error('Error saving exam:', error);
       toast({
         variant: "destructive",
         title: "Failed to save exam",
@@ -143,19 +128,14 @@ export function CreateExamForm() {
     });
   };
 
-  const handleSubjectChange = (value: string) => {
-    setSelectedSubject(value);
-    const subject = subjects.find(s => s.name === value);
-    setAvailableTopics(subject?.topics || []);
-    form.setValue("topic", "");
-  };
+  // No need for handleSubjectChange - teachers can type any subject
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     setGeneratedQuestions(null);
     try {
-      const topicToUse = values.topic === "Custom" ? values.customTopic : values.topic;
-      
+      const topicToUse = values.topic;
+
       // Check if API key is configured
       if (!process.env.NEXT_PUBLIC_GOOGLE_GENAI_API_KEY && !process.env.GOOGLE_GENAI_API_KEY) {
         // Generate mock questions for demo purposes
@@ -186,7 +166,7 @@ export function CreateExamForm() {
       });
     } catch (error) {
       // Generate mock questions as fallback
-      const topicToUse = values.topic === "Custom" ? values.customTopic : values.topic;
+      const topicToUse = values.topic;
       const mockQuestions = generateMockQuestions(
         values.numberOfQuestions,
         values.questionType,
@@ -207,11 +187,11 @@ export function CreateExamForm() {
   function generateMockQuestions(count: number, type: string, topic: string, subject: string) {
     const questionBank = getQuestionBank(subject, topic, type);
     const questions = [];
-    
+
     // Shuffle and select questions
     const shuffled = [...questionBank].sort(() => Math.random() - 0.5);
     const selected = shuffled.slice(0, Math.min(count, shuffled.length));
-    
+
     // If we need more questions than available, generate additional ones
     if (selected.length < count) {
       const remaining = count - selected.length;
@@ -219,14 +199,14 @@ export function CreateExamForm() {
         selected.push(generateGenericQuestion(type, topic, subject, selected.length + i + 1));
       }
     }
-    
+
     return selected;
   }
 
   // Get question bank based on subject and topic
   function getQuestionBank(subject: string, topic: string, type: string) {
     const key = `${subject}-${topic}-${type}`;
-    
+
     // Computer Science Questions
     if (subject === "Computer Science") {
       if (topic === "Data Structures") {
@@ -324,7 +304,7 @@ export function CreateExamForm() {
         }
       }
     }
-    
+
     // Mathematics Questions
     if (subject === "Mathematics") {
       if (topic === "Calculus") {
@@ -364,7 +344,7 @@ export function CreateExamForm() {
         }
       }
     }
-    
+
     // Physics Questions
     if (subject === "Physics") {
       if (topic === "Mechanics") {
@@ -389,35 +369,68 @@ export function CreateExamForm() {
         }
       }
     }
-    
+
     // Return empty array if no specific questions found
     return [];
   }
 
-  // Generate generic question when specific ones aren't available
+  // Generate unique questions when AI is not available
   function generateGenericQuestion(type: string, topic: string, subject: string, index: number) {
+    const questionTemplates = [
+      `What is the primary function of ${topic}?`,
+      `Which of the following best describes ${topic}?`,
+      `What are the key characteristics of ${topic}?`,
+      `How does ${topic} relate to ${subject}?`,
+      `What is the most important aspect of ${topic}?`,
+      `Which statement about ${topic} is correct?`,
+      `What role does ${topic} play in ${subject}?`,
+      `Which of these is a feature of ${topic}?`,
+      `What makes ${topic} significant in ${subject}?`,
+      `How would you explain ${topic}?`
+    ];
+
+    const optionTemplates = [
+      ['Primary function', 'Secondary function', 'Tertiary function', 'No function'],
+      ['First characteristic', 'Second characteristic', 'Third characteristic', 'Fourth characteristic'],
+      ['Option A', 'Option B', 'Option C', 'Option D'],
+      ['True statement', 'False statement', 'Partial truth', 'Complete truth'],
+      ['Main feature', 'Minor feature', 'Related feature', 'Unrelated feature']
+    ];
+
     if (type === "MCQ") {
+      const questionIndex = (index - 1) % questionTemplates.length;
+      const optionIndex = (index - 1) % optionTemplates.length;
+      
       return {
-        questionText: `What is an important concept in ${topic}? (Question ${index})`,
-        options: [
-          `Key concept A in ${topic}`,
-          `Key concept B in ${topic}`,
-          `Key concept C in ${topic}`,
-          `Key concept D in ${topic}`
-        ],
-        correctAnswer: `Key concept A in ${topic}`
+        questionText: questionTemplates[questionIndex],
+        options: optionTemplates[optionIndex],
+        correctAnswer: optionTemplates[optionIndex][0]
       };
     } else if (type === "True/False") {
+      const statements = [
+        `${topic} is a fundamental concept in ${subject}`,
+        `Understanding ${topic} is essential for ${subject}`,
+        `${topic} plays a crucial role in ${subject}`,
+        `${topic} is the most important aspect of ${subject}`,
+        `${topic} is directly related to ${subject}`
+      ];
       return {
-        questionText: `${topic} is an important area of study in ${subject}.`,
+        questionText: statements[(index - 1) % statements.length],
         options: ["True", "False"],
         correctAnswer: "True"
       };
     } else {
+      const fillBlanks = [
+        `The main purpose of ${topic} is _____.`,
+        `${topic} is primarily used for _____.`,
+        `The key feature of ${topic} is _____.`,
+        `In ${subject}, ${topic} refers to _____.`,
+        `The fundamental principle of ${topic} is _____.`
+      ];
       return {
-        questionText: `In ${topic}, the fundamental principle is _____.`,
+        questionText: fillBlanks[(index - 1) % fillBlanks.length],
         options: [],
-        correctAnswer: `core concept of ${topic}`
+        correctAnswer: `core concept`
       };
     }
   }
@@ -451,21 +464,9 @@ export function CreateExamForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Subject</FormLabel>
-                    <Select onValueChange={(value) => {
-                      field.onChange(value);
-                      handleSubjectChange(value);
-                    }} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {subjects.map((subject) => (
-                          <SelectItem key={subject.name} value={subject.name}>
-                            {subject.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <Input placeholder="e.g., Computer Science, History, Biology, Mathematics..." {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -475,28 +476,18 @@ export function CreateExamForm() {
                 name="topic"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Topic</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!selectedSubject}>
-                      <FormControl>
-                        <SelectTrigger><SelectValue placeholder="Select topic" /></SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {availableTopics.map((topic) => (
-                          <SelectItem key={topic} value={topic}>
-                            {topic}
-                          </SelectItem>
-                        ))}
-                        <SelectItem value="Custom">Custom Topic</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Topics</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Data Structures, Algorithms, Binary Trees..." {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              {form.watch("topic") === "Custom" && (
+              {false && (
                 <FormField
                   control={form.control}
-                  name="customTopic"
+                  name="topic"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Custom Topic</FormLabel>
@@ -628,17 +619,16 @@ export function CreateExamForm() {
                     {q.options && (
                       <ul className="space-y-2 pl-11">
                         {q.options.map((opt, i) => (
-                          <li key={i} className={`flex items-center text-sm p-2 rounded-md transition-colors ${
-                            opt === q.correctAnswer 
-                              ? 'bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800' 
+                          <li key={i} className={`flex items-center text-sm p-2 rounded-md transition-colors ${opt === q.correctAnswer
+                              ? 'bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800'
                               : 'bg-secondary/50'
-                          }`}>
-                             {opt === q.correctAnswer ? (
-                                <Check className="mr-2 h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
-                              ) : (
-                                <div className="mr-2 h-4 w-4 shrink-0" />
-                              )}
-                              <span className={opt === q.correctAnswer ? 'font-medium' : ''}>{opt}</span>
+                            }`}>
+                            {opt === q.correctAnswer ? (
+                              <Check className="mr-2 h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
+                            ) : (
+                              <div className="mr-2 h-4 w-4 shrink-0" />
+                            )}
+                            <span className={opt === q.correctAnswer ? 'font-medium' : ''}>{opt}</span>
                           </li>
                         ))}
                       </ul>
@@ -652,7 +642,7 @@ export function CreateExamForm() {
                   </div>
                 ))}
                 {!savedExam ? (
-                  <Button 
+                  <Button
                     onClick={handleSaveExam}
                     className="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                   >
