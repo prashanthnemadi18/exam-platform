@@ -31,7 +31,7 @@ export function SidebarNav() {
 
   return (
     <TooltipProvider>
-      <aside className="fixed inset-y-0 left-0 z-10 hidden w-16 flex-col border-r border-amber-200 bg-gradient-to-b from-white to-amber-50/50 sm:flex shadow-lg">
+      <aside className="fixed inset-y-0 left-0 z-50 hidden w-16 flex-col border-r border-amber-200 bg-gradient-to-b from-white to-amber-50/50 sm:flex shadow-lg">
         <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
           <Link
             href="/dashboard"

@@ -9,9 +9,9 @@ export default function DashboardLayout({
   return (
     <div className="flex min-h-screen w-full relative overflow-hidden">
       {/* Animated background - Light theme */}
-      <div className="fixed inset-0 grid-pattern opacity-30" />
-      <div className="fixed inset-0 bg-gradient-to-br from-amber-100/40 via-transparent to-teal-100/40" />
-      
+      <div className="fixed inset-0 z-0 grid-pattern opacity-30" />
+      <div className="fixed inset-0 z-0 bg-gradient-to-br from-amber-100/40 via-transparent to-teal-100/40" />
+
       <SidebarNav />
       <div className="flex flex-col flex-1 sm:pl-16 relative z-10">
         <main className="flex-1 p-0">
