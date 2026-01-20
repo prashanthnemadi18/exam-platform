@@ -29,11 +29,17 @@ interface ExamFormProps {
   };
   examData?: {
     questions: any[];
+    teacherId?: string;
   };
   timeRemaining?: number;
+  isTerminated?: boolean;
+  onSubmitStart?: () => void;
+  tabSwitchCount?: number;
+  cameraViolations?: number;
+  terminationReason?: string;
 }
 
-export function ExamForm({ examId, studentData, examData, timeRemaining }: ExamFormProps) {
+export function ExamForm({ examId, studentData, examData, timeRemaining, isTerminated, onSubmitStart, tabSwitchCount, cameraViolations, terminationReason }: ExamFormProps) {
   const questions = examData?.questions || mockExamQuestions.questions;
 
   // Dynamically create the Zod schema based on the questions
@@ -52,6 +58,11 @@ export function ExamForm({ examId, studentData, examData, timeRemaining }: ExamF
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    // Notify parent component that submission has started (stops the timer)
+    if (onSubmitStart) {
+      onSubmitStart();
+    }
+    
     setIsLoading(true);
     
     try {
@@ -68,6 +79,9 @@ export function ExamForm({ examId, studentData, examData, timeRemaining }: ExamF
         };
       });
 
+      // Get teacher ID from exam data
+      const teacherId = examData?.teacherId || null;
+
       // Submit to API
       const submission = {
         examId,
@@ -78,6 +92,14 @@ export function ExamForm({ examId, studentData, examData, timeRemaining }: ExamF
         answers,
         score,
         totalQuestions: questions.length,
+        submittedAt: new Date().toISOString(),
+        wasTerminated: isTerminated || false,
+        timeRemaining: timeRemaining || 0,
+        tabSwitchCount: tabSwitchCount || 0,
+        cameraViolations: cameraViolations || 0,
+        terminationReason: terminationReason || '',
+        cheatingDetected: (tabSwitchCount || 0) > 0 || (cameraViolations || 0) > 0,
+        teacherId: teacherId,
       };
 
       await fetch('/api/submissions', {
@@ -99,10 +121,26 @@ export function ExamForm({ examId, studentData, examData, timeRemaining }: ExamF
       <Card className="max-w-2xl mx-auto">
         <CardContent className="text-center space-y-4 py-16">
           <CheckCircle className="mx-auto h-16 w-16 text-green-500" />
-          <h3 className="text-2xl font-bold font-headline">Exam Submitted!</h3>
+          <h3 className="text-2xl font-bold font-headline">
+            {isTerminated && timeRemaining === 0 
+              ? "Time's Up! Exam Auto-Submitted" 
+              : isTerminated 
+              ? "Exam Auto-Submitted" 
+              : "Exam Submitted!"}
+          </h3>
           <p className="text-muted-foreground">
-            Your responses have been recorded. You can now close this window.
+            {isTerminated && timeRemaining === 0
+              ? "Your exam time has expired and your responses were automatically submitted."
+              : isTerminated 
+              ? "Your exam was automatically submitted due to policy violations. Your responses have been recorded."
+              : "Your responses have been recorded. You can now close this window."
+            }
           </p>
+          {isTerminated && timeRemaining !== 0 && (
+            <p className="text-sm text-destructive">
+              Note: This submission was flagged for review due to detected cheating attempts.
+            </p>
+          )}
         </CardContent>
       </Card>
     );

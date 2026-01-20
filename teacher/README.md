@@ -12,12 +12,16 @@ AssessAI is a complete online examination platform that uses AI to generate real
 - 🔗 **Shareable Links** - One-click exam sharing
 - 📊 **Analytics Dashboard** - Track student performance
 - 👥 **Student Management** - View all registered students
+- 🛡️ **Cheating Detection** - Real-time monitoring of student behavior
+- 📄 **PDF Generation** - High-quality PDFs with Kannada support
+- 🚨 **Anti-Cheat Analytics** - Detailed reports on flagged submissions
 
 ### For Students
 - 📱 **Mobile Friendly** - Take exams on any device
 - ⏱️ **Timed Exams** - Automatic timer and submission
 - ✅ **Instant Results** - See scores immediately
 - 📖 **Answer Review** - Review correct answers after submission
+- 🔒 **Secure Exams** - Anti-cheating measures active during exams
 
 ### AI Capabilities
 - Supports **any subject** (Computer Science, History, Biology, etc.)
@@ -35,15 +39,35 @@ AssessAI is a complete online examination platform that uses AI to generate real
 npm install
 ```
 
-### 2. Configure AI
+### 2. Configure AI (REQUIRED for Real-Time Questions)
 
-Create `.env.local` file:
+**⚠️ IMPORTANT**: The demo API key is invalid. You MUST get your own FREE API key!
+
+#### Option 1: Google AI (Recommended - FREE & Easy)
+
+1. Get FREE API key: **[https://aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)**
+2. Create `.env.local` file:
+
+```bash
+# Google AI (Recommended - FREE!)
+GOOGLE_GENAI_API_KEY=your-actual-google-key-here
+NEXT_PUBLIC_GOOGLE_GENAI_API_KEY=your-actual-google-key-here
+```
+
+3. Test it works: `node test-ai-simple.js`
+
+**📚 Detailed Guide**: See [SETUP-GOOGLE-AI.md](./SETUP-GOOGLE-AI.md)
+
+#### Option 2: OpenAI (Alternative - Paid)
 
 ```bash
 # Get API key from: https://platform.openai.com/api-keys
 OPENAI_API_KEY=sk-your-actual-key-here
+```
 
-# Optional: MongoDB for production
+#### Optional: MongoDB for Production
+
+```bash
 MONGODB_URI=your-mongodb-connection-string
 ```
 
@@ -310,3 +334,90 @@ For detailed guides, see:
 - [Quick Start](../QUICK-START.md)
 - [AI Setup](./AI-SETUP-GUIDE.md)
 - [Complete Analysis](../COMPLETE-PROJECT-ANALYSIS.md)
+
+
+## 🛡️ Anti-Cheating System
+
+AssessAI includes comprehensive anti-cheating measures to ensure exam integrity:
+
+### Real-Time Monitoring
+- **Tab Switch Detection**: Automatically detects when students switch tabs
+- **Warning System**: Students get 2 warnings before auto-submission
+- **Auto-Termination**: Exam auto-submits after 2 tab switches
+- **Copy/Paste Prevention**: Blocks Ctrl+C, Ctrl+V, Ctrl+X
+- **Right-Click Disabled**: Context menu blocked during exams
+- **Keyboard Shortcuts Blocked**: F12, DevTools disabled
+
+### Teacher Analytics
+- **Cheating Detection Report**: View all flagged submissions
+- **Tab Switch Counts**: See how many times each student switched tabs
+- **Auto-Submitted Status**: Identify terminated exams
+- **Color-Coded Indicators**: 🛡️ Clean vs ⚠️ Flagged submissions
+- **Detailed Reports**: Export data for institutional records
+
+### How It Works
+1. Student starts exam → Anti-cheat measures activate
+2. System monitors tab switches, copy attempts, etc.
+3. Violations are recorded in real-time
+4. After 2 tab switches → Exam auto-submits
+5. Teacher views detailed analytics in dashboard
+
+**📖 Full Documentation**: See `docs/CHEATING-DETECTION.md`
+
+## 📄 PDF Generation with Kannada Support
+
+Generate high-quality PDF question papers with proper support for Kannada and other regional languages:
+
+### Features
+- **Professional Layout**: Purple gradient header, color-coded sections
+- **Kannada Support**: Proper rendering of ಕನ್ನಡ and other Unicode scripts
+- **Answer Keys Included**: Green-highlighted correct answers
+- **Auto-Pagination**: Automatic page breaks and numbering
+- **Print-Ready Quality**: High-resolution PDFs for printing
+
+### Supported Languages
+- ✅ Kannada (ಕನ್ನಡ)
+- ✅ Hindi (हिंदी)
+- ✅ Tamil (தமிழ்)
+- ✅ Telugu (తెలుగు)
+- ✅ Malayalam (മലയാളം)
+- ✅ Bengali (বাংলা)
+- ✅ English and all Unicode scripts
+
+### How to Generate PDFs
+1. Create exam (use Kannada in any field)
+2. Generate questions with AI
+3. Click "Save Exam & Download PDF"
+4. PDF downloads with answer key
+
+**📖 Full Documentation**: See `docs/PDF-GENERATION.md`
+
+## 📚 Documentation
+
+- **Quick Start Guide**: `docs/TEACHER-QUICK-START.md` - Start here!
+- **Cheating Detection**: `docs/CHEATING-DETECTION.md` - Complete anti-cheat guide
+- **PDF Generation**: `docs/PDF-GENERATION.md` - Kannada PDF guide
+- **Implementation Summary**: `IMPLEMENTATION-SUMMARY.md` - Technical details
+- **API Documentation**: `docs/API-KEYS.md` - API setup guide
+
+## 🎯 Quick Links
+
+### For Teachers
+- **Dashboard**: `http://localhost:3003/dashboard`
+- **Create Exam**: `http://localhost:3003/dashboard/create-exam`
+- **Analytics**: `http://localhost:3003/dashboard/analytics` (View cheating reports here!)
+- **Students**: `http://localhost:3003/dashboard/students`
+
+### For Students
+- **Register**: `http://localhost:3003/register`
+- **Login**: `http://localhost:3003/student-login`
+- **Take Exam**: Use link provided by teacher
+
+## 🔒 Security & Privacy
+
+- ✅ Student verification before exam access
+- ✅ Real-time cheating detection
+- ✅ Secure data storage (MongoDB/LocalStorage)
+- ✅ No personal browsing history collected
+- ✅ Complies with educational data privacy standards
+

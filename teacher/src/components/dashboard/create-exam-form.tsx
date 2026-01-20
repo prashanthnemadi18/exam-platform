@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useState } from "react";
-import { Loader2, Wand2, FileText, ListChecks, Check, Link2, Copy } from "lucide-react";
+import { Loader2, Wand2, FileText, ListChecks, Check, Link2, Copy, Download, MessageCircle, Mail } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -43,9 +43,9 @@ const formSchema = z.object({
   topic: z.string().min(3, {
     message: "Please enter topics (e.g., Data Structures, World War II, etc.).",
   }),
-  difficulty: z.enum(["Easy", "Medium", "Hard"]),
-  questionType: z.enum(["MCQ", "True/False", "Fill in the Blanks"]),
-  numberOfQuestions: z.coerce.number().min(1).max(20),
+  difficulty: z.enum(["Easy", "Medium", "Hard", "Auto Mixed"]),
+  questionType: z.enum(["MCQ", "True/False", "Fill in the Blanks", "Auto Mixed"]),
+  numberOfQuestions: z.coerce.number().min(1).max(180),
   duration: z.coerce.number().min(10).max(180),
 });
 
@@ -54,6 +54,7 @@ export function CreateExamForm() {
   const [generatedQuestions, setGeneratedQuestions] = useState<GenerateExamQuestionsOutput | null>(null);
   const [savedExam, setSavedExam] = useState<any>(null);
   const [examLink, setExamLink] = useState("");
+  const [downloadingPDF, setDownloadingPDF] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -75,6 +76,9 @@ export function CreateExamForm() {
     const topicToUse = formValues.topic;
 
     try {
+      // Get teacher ID from localStorage
+      const teacherId = typeof window !== 'undefined' ? localStorage.getItem('teacherId') : null;
+      
       // Create exam object
       const examData = {
         title: formValues.examTitle,
@@ -86,6 +90,7 @@ export function CreateExamForm() {
         duration: formValues.duration,
         questions: generatedQuestions.questions,
         createdBy: "teacher",
+        teacherId: teacherId || undefined,
       };
 
       // Save to database via API
@@ -98,11 +103,11 @@ export function CreateExamForm() {
       if (!response.ok) throw new Error('Failed to save exam');
 
       const savedExam = await response.json();
-      
+
       // Generate exam link
       const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
       const link = `${baseUrl}/exam/${savedExam.id}`;
-      
+
       setSavedExam(savedExam);
       setExamLink(link);
 
@@ -128,6 +133,191 @@ export function CreateExamForm() {
     });
   };
 
+  const shareExamViaWhatsApp = () => {
+    if (!savedExam || !examLink) return;
+    
+    // Get teacher info from localStorage
+    const teacherName = typeof window !== 'undefined' ? localStorage.getItem('teacherName') || 'Your Teacher' : 'Your Teacher';
+    const teacherEmail = typeof window !== 'undefined' ? localStorage.getItem('teacherEmail') || '' : '';
+    
+    const message = `🎓 *Online Examination Invitation*
+
+Dear Student,
+
+You have been invited to take an online examination.
+
+📋 *Exam Details:*
+*Title:* ${savedExam.title}
+*Subject:* ${savedExam.subject}
+*Topic:* ${savedExam.topic}
+*Duration:* ${savedExam.duration} minutes
+*Questions:* ${savedExam.numberOfQuestions}
+*Difficulty:* ${savedExam.difficulty}
+
+🔗 *Exam Link:*
+${examLink}
+
+📝 *Instructions:*
+1. Click the link above to start the exam
+2. Login with your registered details (Name, USN, Email)
+3. Read all questions carefully
+4. Submit before time expires
+
+⚠️ *Important Notes:*
+• Exam must be completed in one sitting
+• Anti-cheating measures are active
+• Tab switching will result in auto-submission
+• Ensure stable internet connection
+• Use a laptop/desktop for best experience
+
+📧 *Contact Your Teacher:*
+*Name:* ${teacherName}${teacherEmail ? `\n*Email:* ${teacherEmail}` : ''}
+
+_✨ Do your work honestly, and God will reward you for it 😊✨._`;
+
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+    toast({
+      title: "📱 Opening WhatsApp...",
+      description: "Share the exam link with your students.",
+    });
+  };
+
+  const shareExamViaEmail = () => {
+    if (!savedExam || !examLink) return;
+    
+    // Get teacher info from localStorage
+    const teacherName = typeof window !== 'undefined' ? localStorage.getItem('teacherName') || 'Your Teacher' : 'Your Teacher';
+    const teacherEmail = typeof window !== 'undefined' ? localStorage.getItem('teacherEmail') || '' : '';
+    
+    const subject = `Invitation: ${savedExam.title} - Online Examination`;
+    const body = `Dear Student,
+
+You have been invited to take an online examination.
+
+EXAM DETAILS:
+Title: ${savedExam.title}
+Subject: ${savedExam.subject}
+Topic: ${savedExam.topic}
+Duration: ${savedExam.duration} minutes
+Questions: ${savedExam.numberOfQuestions}
+Difficulty: ${savedExam.difficulty}
+
+EXAM LINK:
+${examLink}
+
+INSTRUCTIONS:
+1. Click the link above to start the exam
+2. Login with your registered details (Name, USN, Email)
+3. Read all questions carefully
+4. Submit before time expires
+
+IMPORTANT NOTES:
+- Exam must be completed in one sitting
+- Anti-cheating measures are active
+- Tab switching will result in auto-submission
+- Ensure stable internet connection
+- Use a laptop/desktop for best experience
+
+CONTACT YOUR TEACHER:
+Name: ${teacherName}${teacherEmail ? `\nEmail: ${teacherEmail}` : ''}
+
+Do your work honestly, and God will reward you for it.`;
+
+    const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailtoUrl;
+    toast({
+      title: "📧 Opening Email...",
+      description: "Compose email with exam link.",
+    });
+  };
+
+  const downloadQuestionPaper = async (examData?: any) => {
+    const examToUse = examData || savedExam;
+    if (!examToUse) return;
+    
+    setDownloadingPDF(true);
+    try {
+      // If exam is not saved yet (temp exam), save it first
+      if (examToUse.id.startsWith('temp-')) {
+        const response = await fetch('/api/exams', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: examToUse.title,
+            subject: examToUse.subject,
+            topic: examToUse.topic,
+            difficulty: examToUse.difficulty,
+            questionType: form.getValues('questionType'),
+            numberOfQuestions: examToUse.questions.length,
+            duration: examToUse.duration,
+            questions: examToUse.questions,
+            createdBy: "teacher",
+          }),
+        });
+
+        if (!response.ok) throw new Error('Failed to save exam');
+        
+        const newSavedExam = await response.json();
+        const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+        const link = `${baseUrl}/exam/${newSavedExam.id}`;
+        
+        setSavedExam(newSavedExam);
+        setExamLink(link);
+        
+        // Now download with the real exam ID
+        const pdfResponse = await fetch(`/api/exams/${newSavedExam.id}/question-paper`);
+        if (!pdfResponse.ok) throw new Error('Failed to generate PDF');
+        
+        const blob = await pdfResponse.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${newSavedExam.title.replace(/\s+/g, '_')}_Question_Paper.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        toast({
+          title: "✅ Exam Saved & PDF Downloaded!",
+          description: "Question paper has been downloaded successfully.",
+        });
+      } else {
+        // Exam already saved, just download PDF
+        const response = await fetch(`/api/exams/${examToUse.id}/question-paper`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to generate PDF');
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${examToUse.title.replace(/\s+/g, '_')}_Question_Paper.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        toast({
+          title: "✅ PDF Downloaded!",
+          description: "Question paper with answer key has been downloaded.",
+        });
+      }
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      toast({
+        title: "❌ Error",
+        description: "Failed to download PDF. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingPDF(false);
+    }
+  };
+
   // No need for handleSubjectChange - teachers can type any subject
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -136,47 +326,56 @@ export function CreateExamForm() {
     try {
       const topicToUse = values.topic;
 
-      // Check if API key is configured
-      if (!process.env.NEXT_PUBLIC_GOOGLE_GENAI_API_KEY && !process.env.GOOGLE_GENAI_API_KEY) {
-        // Generate mock questions for demo purposes
-        const mockQuestions = generateMockQuestions(
-          values.numberOfQuestions,
-          values.questionType,
-          topicToUse || values.topic,
-          values.subject
-        );
-        setGeneratedQuestions({ questions: mockQuestions });
-        toast({
-          title: "✨ Demo Questions Generated!",
-          description: `${mockQuestions.length} ${values.questionType} questions created for ${values.examTitle}. Add Google AI API key for AI-generated questions.`,
+      // Always try AI generation first
+      try {
+        const result = await generateExamQuestions({
+          topic: `${values.subject} - ${topicToUse}: Generate detailed questions for this topic`,
+          difficulty: values.difficulty,
+          questionType: values.questionType,
+          numberOfQuestions: values.numberOfQuestions,
         });
-        return;
+
+        if (result && result.questions && result.questions.length > 0) {
+          setGeneratedQuestions(result);
+          toast({
+            title: "✨ AI Questions Generated!",
+            description: `${result.questions.length} ${values.questionType} questions created for ${values.examTitle}`,
+          });
+          return;
+        }
+      } catch (aiError) {
+        console.log('AI generation failed, using demo questions:', aiError);
       }
 
-      const result = await generateExamQuestions({
-        topic: `${values.subject} - ${topicToUse}: Generate detailed questions for this topic`,
-        difficulty: values.difficulty,
-        questionType: values.questionType,
-        numberOfQuestions: values.numberOfQuestions,
-      });
-      setGeneratedQuestions(result);
+      // Fallback to demo questions
+      const mockQuestions = generateMockQuestions(
+        values.numberOfQuestions,
+        values.questionType,
+        topicToUse || values.topic,
+        values.subject,
+        values.difficulty
+      );
+      setGeneratedQuestions({ questions: mockQuestions });
       toast({
-        title: "✨ Questions Generated Successfully!",
-        description: `${result.questions.length} ${values.questionType} questions created for ${values.examTitle}`,
+        title: "⚠️ Using Demo Questions",
+        description: `AI not configured. Add Google AI API key for real-time questions. See SETUP-GOOGLE-AI.md`,
+        variant: "destructive",
       });
     } catch (error) {
-      // Generate mock questions as fallback
+      // Final fallback
       const topicToUse = values.topic;
       const mockQuestions = generateMockQuestions(
         values.numberOfQuestions,
         values.questionType,
         topicToUse || values.topic,
-        values.subject
+        values.subject,
+        values.difficulty
       );
       setGeneratedQuestions({ questions: mockQuestions });
       toast({
-        title: "⚠️ Using Demo Questions",
-        description: "AI generation failed. Showing demo questions. Please add a valid Google AI API key in .env.local for AI-generated questions.",
+        title: "⚠️ AI Not Configured",
+        description: "Get FREE Google AI key: https://aistudio.google.com/app/apikey - See SETUP-GOOGLE-AI.md",
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -184,7 +383,12 @@ export function CreateExamForm() {
   }
 
   // Comprehensive question bank for realistic demo questions
-  function generateMockQuestions(count: number, type: string, topic: string, subject: string) {
+  function generateMockQuestions(count: number, type: string, topic: string, subject: string, difficulty: string) {
+    // Handle Auto Mixed
+    if (type === 'Auto Mixed' || difficulty === 'Auto Mixed') {
+      return generateMixedMockQuestions(count, type, topic, subject, difficulty);
+    }
+    
     const questionBank = getQuestionBank(subject, topic, type);
     const questions = [];
 
@@ -201,6 +405,28 @@ export function CreateExamForm() {
     }
 
     return selected;
+  }
+
+  // Generate mixed mock questions for Auto Mixed option
+  function generateMixedMockQuestions(count: number, type: string, topic: string, subject: string, difficulty: string) {
+    const questions = [];
+    const difficulties = ['Easy', 'Medium', 'Hard'];
+    const types = ['MCQ', 'True/False', 'Fill in the Blanks'];
+    
+    for (let i = 0; i < count; i++) {
+      const currentDifficulty = difficulty === 'Auto Mixed'
+        ? difficulties[i % difficulties.length]
+        : difficulty;
+      
+      const currentType = type === 'Auto Mixed'
+        ? types[i % types.length]
+        : type;
+      
+      const question = generateGenericQuestion(currentType, topic, subject, i + 1);
+      questions.push(question);
+    }
+    
+    return questions;
   }
 
   // Get question bank based on subject and topic
@@ -377,30 +603,35 @@ export function CreateExamForm() {
   // Generate unique questions when AI is not available
   function generateGenericQuestion(type: string, topic: string, subject: string, index: number) {
     const questionTemplates = [
-      `What is the primary function of ${topic}?`,
+      `What is the primary function of ${topic} in ${subject}?`,
       `Which of the following best describes ${topic}?`,
       `What are the key characteristics of ${topic}?`,
-      `How does ${topic} relate to ${subject}?`,
+      `How does ${topic} relate to other concepts in ${subject}?`,
       `What is the most important aspect of ${topic}?`,
       `Which statement about ${topic} is correct?`,
       `What role does ${topic} play in ${subject}?`,
       `Which of these is a feature of ${topic}?`,
       `What makes ${topic} significant in ${subject}?`,
-      `How would you explain ${topic}?`
+      `How would you explain ${topic} to a beginner?`,
+      `What is the main application of ${topic}?`,
+      `Which principle governs ${topic}?`,
+      `What distinguishes ${topic} from similar concepts?`,
+      `How is ${topic} typically implemented?`,
+      `What are the benefits of understanding ${topic}?`
     ];
 
     const optionTemplates = [
-      ['Primary function', 'Secondary function', 'Tertiary function', 'No function'],
-      ['First characteristic', 'Second characteristic', 'Third characteristic', 'Fourth characteristic'],
-      ['Option A', 'Option B', 'Option C', 'Option D'],
-      ['True statement', 'False statement', 'Partial truth', 'Complete truth'],
-      ['Main feature', 'Minor feature', 'Related feature', 'Unrelated feature']
+      [`Essential for understanding ${subject}`, 'Secondary importance', 'Rarely used', 'Not relevant'],
+      [`Core concept in ${subject}`, 'Advanced topic', 'Basic principle', 'Optional knowledge'],
+      [`Fundamental to ${subject}`, 'Supplementary material', 'Historical context', 'Future development'],
+      [`Critical component`, 'Supporting element', 'Minor detail', 'Unrelated concept'],
+      [`Primary application`, 'Secondary use', 'Theoretical only', 'Practical only']
     ];
 
     if (type === "MCQ") {
       const questionIndex = (index - 1) % questionTemplates.length;
       const optionIndex = (index - 1) % optionTemplates.length;
-      
+
       return {
         questionText: questionTemplates[questionIndex],
         options: optionTemplates[optionIndex],
@@ -409,10 +640,13 @@ export function CreateExamForm() {
     } else if (type === "True/False") {
       const statements = [
         `${topic} is a fundamental concept in ${subject}`,
-        `Understanding ${topic} is essential for ${subject}`,
+        `Understanding ${topic} is essential for mastering ${subject}`,
         `${topic} plays a crucial role in ${subject}`,
-        `${topic} is the most important aspect of ${subject}`,
-        `${topic} is directly related to ${subject}`
+        `${topic} is one of the core principles of ${subject}`,
+        `${topic} is directly related to ${subject}`,
+        `Knowledge of ${topic} is required for ${subject}`,
+        `${topic} forms the foundation of ${subject}`,
+        `${topic} is widely used in ${subject}`
       ];
       return {
         questionText: statements[(index - 1) % statements.length],
@@ -421,16 +655,19 @@ export function CreateExamForm() {
       };
     } else {
       const fillBlanks = [
-        `The main purpose of ${topic} is _____.`,
-        `${topic} is primarily used for _____.`,
+        `The main purpose of ${topic} in ${subject} is _____.`,
+        `${topic} is primarily used for _____ in ${subject}.`,
         `The key feature of ${topic} is _____.`,
         `In ${subject}, ${topic} refers to _____.`,
-        `The fundamental principle of ${topic} is _____.`
+        `The fundamental principle of ${topic} is _____.`,
+        `${topic} helps to achieve _____ in ${subject}.`,
+        `The most important application of ${topic} is _____.`,
+        `${topic} is essential for _____.`
       ];
       return {
         questionText: fillBlanks[(index - 1) % fillBlanks.length],
         options: [],
-        correctAnswer: `core concept`
+        correctAnswer: `understanding ${subject}`
       };
     }
   }
@@ -513,6 +750,7 @@ export function CreateExamForm() {
                         <SelectItem value="Easy">Easy</SelectItem>
                         <SelectItem value="Medium">Medium</SelectItem>
                         <SelectItem value="Hard">Hard</SelectItem>
+                        <SelectItem value="Auto Mixed">Auto Mixed (All Levels)</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -533,6 +771,7 @@ export function CreateExamForm() {
                         <SelectItem value="MCQ">MCQ</SelectItem>
                         <SelectItem value="True/False">True/False</SelectItem>
                         <SelectItem value="Fill in the Blanks">Fill in the Blanks</SelectItem>
+                        <SelectItem value="Auto Mixed">Auto Mixed (All Types)</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -547,7 +786,7 @@ export function CreateExamForm() {
                     <FormItem>
                       <FormLabel>Questions</FormLabel>
                       <FormControl>
-                        <Input type="number" min="1" max="20" {...field} />
+                        <Input type="number" min="1" max="180" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -620,8 +859,8 @@ export function CreateExamForm() {
                       <ul className="space-y-2 pl-11">
                         {q.options.map((opt, i) => (
                           <li key={i} className={`flex items-center text-sm p-2 rounded-md transition-colors ${opt === q.correctAnswer
-                              ? 'bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800'
-                              : 'bg-secondary/50'
+                            ? 'bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800'
+                            : 'bg-secondary/50'
                             }`}>
                             {opt === q.correctAnswer ? (
                               <Check className="mr-2 h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
@@ -642,13 +881,48 @@ export function CreateExamForm() {
                   </div>
                 ))}
                 {!savedExam ? (
-                  <Button
-                    onClick={handleSaveExam}
-                    className="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white shadow-lg hover:shadow-xl transition-all duration-300"
-                  >
-                    <FileText className="mr-2 h-4 w-4" />
-                    Save Exam & Publish
-                  </Button>
+                  <div className="space-y-3">
+                    <Button
+                      onClick={handleSaveExam}
+                      className="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      Save Exam & Publish
+                    </Button>
+                    {generatedQuestions && (
+                      <Button
+                        onClick={() => {
+                          // Create temporary exam object for PDF generation
+                          const tempExam = {
+                            id: 'temp-' + Date.now(),
+                            title: form.getValues('examTitle'),
+                            subject: form.getValues('subject'),
+                            topic: form.getValues('topic'),
+                            difficulty: form.getValues('difficulty'),
+                            duration: form.getValues('duration'),
+                            questions: generatedQuestions.questions,
+                            createdAt: new Date().toISOString()
+                          };
+                          downloadQuestionPaper(tempExam);
+                        }}
+                        variant="outline"
+                        disabled={downloadingPDF}
+                        className="w-full border-2 border-blue-500 text-blue-700 hover:bg-blue-50 font-semibold"
+                      >
+                        {downloadingPDF ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Saving & Downloading...
+                          </>
+                        ) : (
+                          <>
+                            <Download className="mr-2 h-4 w-4" />
+                            Download Question Paper (PDF)
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 ) : (
                   <div className="space-y-4">
                     <div className="bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 rounded-lg p-6 space-y-4">
@@ -656,7 +930,7 @@ export function CreateExamForm() {
                         <Check className="h-6 w-6" />
                         <h3 className="text-lg font-bold">Exam Published Successfully!</h3>
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <p className="text-sm font-semibold text-foreground">Share this link with students:</p>
                         <div className="flex gap-2">
                           <input
@@ -669,10 +943,31 @@ export function CreateExamForm() {
                             onClick={copyExamLink}
                             size="icon"
                             className="bg-green-600 hover:bg-green-700"
+                            title="Copy Link"
                           >
                             <Copy className="h-4 w-4" />
                           </Button>
                         </div>
+                        
+                        {/* Quick Share Options */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            onClick={shareExamViaWhatsApp}
+                            className="bg-green-600 hover:bg-green-700 text-white font-semibold"
+                          >
+                            <MessageCircle className="mr-2 h-4 w-4" />
+                            Share via WhatsApp
+                          </Button>
+                          <Button
+                            onClick={shareExamViaEmail}
+                            variant="outline"
+                            className="border-2 border-green-600 text-green-700 hover:bg-green-50 font-semibold"
+                          >
+                            <Mail className="mr-2 h-4 w-4" />
+                            Share via Email
+                          </Button>
+                        </div>
+                        
                         {examLink.includes('YOUR_COMPUTER_IP') && (
                           <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded p-3 text-xs">
                             <p className="font-semibold text-amber-900 dark:text-amber-100 mb-1">⚠️ For Mobile Access:</p>
@@ -686,18 +981,36 @@ export function CreateExamForm() {
                         </p>
                       </div>
                     </div>
-                    <Button
-                      onClick={() => {
-                        setSavedExam(null);
-                        setExamLink("");
-                        setGeneratedQuestions(null);
-                        form.reset();
-                      }}
-                      variant="outline"
-                      className="w-full"
-                    >
-                      Create Another Exam
-                    </Button>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button
+                        onClick={downloadQuestionPaper}
+                        disabled={downloadingPDF}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        {downloadingPDF ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Download className="mr-2 h-4 w-4" />
+                            Download Question Paper
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setSavedExam(null);
+                          setExamLink("");
+                          setGeneratedQuestions(null);
+                          form.reset();
+                        }}
+                        variant="outline"
+                      >
+                        Create Another Exam
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>

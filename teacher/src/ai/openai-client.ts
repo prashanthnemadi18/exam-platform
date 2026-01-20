@@ -2,7 +2,7 @@ import OpenAI from 'openai';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY || '',
+  apiKey: process.env.OPENAI_API_KEY || (process.env.NODE_ENV !== 'production' ? process.env.NEXT_PUBLIC_OPENAI_API_KEY : '') || '',
 });
 
 export interface QuestionGenerationParams {
@@ -54,36 +54,51 @@ For Fill in the Blanks, omit options array.
 Generate ${numberOfQuestions} questions now:`;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.7,
-      max_tokens: 2000,
-    });
+    if ((openai as any)?.chat?.completions?.create) {
+      const completion = await (openai as any).chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: 0.7,
+        max_tokens: 2000,
+      });
 
-    const responseText = completion.choices[0]?.message?.content || '[]';
-    
-    // Clean up the response
-    let cleanedResponse = responseText.trim();
-    
-    // Remove markdown code blocks if present
-    if (cleanedResponse.startsWith('```json')) {
-      cleanedResponse = cleanedResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-    } else if (cleanedResponse.startsWith('```')) {
-      cleanedResponse = cleanedResponse.replace(/```\n?/g, '');
+      const responseText = completion.choices[0]?.message?.content || '[]';
+      let cleanedResponse = responseText.trim();
+      if (cleanedResponse.startsWith('```json')) {
+        cleanedResponse = cleanedResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+      } else if (cleanedResponse.startsWith('```')) {
+        cleanedResponse = cleanedResponse.replace(/```\n?/g, '');
+      }
+      const questions = JSON.parse(cleanedResponse);
+      if (!Array.isArray(questions)) throw new Error('Response is not an array');
+      return questions.slice(0, numberOfQuestions);
     }
-
-    // Parse the JSON
-    const questions = JSON.parse(cleanedResponse);
-    
-    if (!Array.isArray(questions)) {
-      throw new Error('Response is not an array');
+    // Fallback for newer SDKs using responses API
+    if ((openai as any)?.responses?.create) {
+      const result = await (openai as any).responses.create({
+        model: 'gpt-4o-mini',
+        input: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: 0.7,
+        max_output_tokens: 2000,
+      });
+      const text = (result as any)?.output_text || (result as any)?.choices?.[0]?.message?.content || '[]';
+      let cleaned = String(text).trim();
+      if (cleaned.startsWith('```json')) {
+        cleaned = cleaned.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+      } else if (cleaned.startsWith('```')) {
+        cleaned = cleaned.replace(/```\n?/g, '');
+      }
+      const questions = JSON.parse(cleaned);
+      if (!Array.isArray(questions)) throw new Error('Response is not an array');
+      return questions.slice(0, numberOfQuestions);
     }
-
-    return questions.slice(0, numberOfQuestions);
+    throw new Error('OpenAI SDK does not support chat or responses API');
   } catch (error) {
     console.error('OpenAI API Error:', error);
     throw new Error('Failed to generate questions with OpenAI');

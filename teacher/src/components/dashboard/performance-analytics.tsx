@@ -28,7 +28,12 @@ import {
   mockMarksDistribution,
 } from "@/lib/mock-data";
 import { useEffect, useState } from "react";
-import type { AnalyzeStudentPerformanceOutput } from "@/ai/flows/analyze-student-performance";
+type AnalyzeStudentPerformanceOutput = {
+  overallPerformance: string;
+  strengths: string[];
+  weaknesses: string[];
+  suggestedImprovements: string;
+};
 
 export function PerformanceAnalytics() {
   const [analysis, setAnalysis] = useState<AnalyzeStudentPerformanceOutput | null>(null);

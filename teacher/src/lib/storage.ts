@@ -34,6 +34,11 @@ export interface ExamSubmission {
   score: number;
   totalQuestions: number;
   submittedAt: string;
+  wasTerminated?: boolean;
+  timeRemaining?: number;
+  tabSwitchCount?: number;
+  terminationReason?: string;
+  cheatingDetected?: boolean;
 }
 
 // Storage keys
@@ -44,10 +49,15 @@ const SUBMISSIONS_KEY = 'assessai_submissions';
 // Student functions
 export async function saveStudent(student: Omit<Student, 'id' | 'registeredAt'>): Promise<Student> {
   try {
+    const teacherId = typeof window !== 'undefined' ? localStorage.getItem('teacherId') : null;
+    
     const response = await fetch('/api/students', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(student),
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(teacherId && { 'x-teacher-id': teacherId })
+      },
+      body: JSON.stringify({ ...student, teacherId }),
     });
     
     if (!response.ok) throw new Error('Failed to save student');
@@ -60,7 +70,10 @@ export async function saveStudent(student: Omit<Student, 'id' | 'registeredAt'>)
 
 export async function getStudents(): Promise<Student[]> {
   try {
-    const response = await fetch('/api/students', {
+    const teacherId = typeof window !== 'undefined' ? localStorage.getItem('teacherId') : null;
+    const url = teacherId ? `/api/students?teacherId=${teacherId}` : '/api/students';
+    
+    const response = await fetch(url, {
       cache: 'no-store',
     });
     
@@ -80,10 +93,15 @@ export async function getStudentById(id: string): Promise<Student | null> {
 // Exam functions
 export async function saveExam(exam: Omit<Exam, 'id' | 'createdAt'>): Promise<Exam> {
   try {
+    const teacherId = typeof window !== 'undefined' ? localStorage.getItem('teacherId') : null;
+    
     const response = await fetch('/api/exams', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(exam),
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(teacherId && { 'x-teacher-id': teacherId })
+      },
+      body: JSON.stringify({ ...exam, teacherId }),
     });
     
     if (!response.ok) throw new Error('Failed to save exam');
@@ -96,7 +114,10 @@ export async function saveExam(exam: Omit<Exam, 'id' | 'createdAt'>): Promise<Ex
 
 export async function getExams(): Promise<Exam[]> {
   try {
-    const response = await fetch('/api/exams', {
+    const teacherId = typeof window !== 'undefined' ? localStorage.getItem('teacherId') : null;
+    const url = teacherId ? `/api/exams?teacherId=${teacherId}` : '/api/exams';
+    
+    const response = await fetch(url, {
       cache: 'no-store',
     });
     
@@ -113,34 +134,54 @@ export async function getExamById(id: string): Promise<Exam | null> {
   return exams.find(e => e.id === id) || null;
 }
 
-// Submission functions - keeping localStorage for now (can be migrated later)
-export function saveSubmission(submission: Omit<ExamSubmission, 'id' | 'submittedAt'>): ExamSubmission {
-  const submissions = getSubmissions();
-  const newSubmission: ExamSubmission = {
-    ...submission,
-    id: generateId(),
-    submittedAt: new Date().toISOString(),
-  };
-  submissions.push(newSubmission);
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(submissions));
+// Submission functions - using API for teacher-filtered submissions
+export async function saveSubmission(submission: Omit<ExamSubmission, 'id' | 'submittedAt'>): Promise<ExamSubmission> {
+  try {
+    const teacherId = typeof window !== 'undefined' ? localStorage.getItem('teacherId') : null;
+    
+    const newSubmission = {
+      ...submission,
+      teacherId: teacherId || undefined,
+    };
+
+    const response = await fetch('/api/submissions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newSubmission),
+    });
+    
+    if (!response.ok) throw new Error('Failed to save submission');
+    return await response.json();
+  } catch (error) {
+    console.error('Error saving submission:', error);
+    throw error;
   }
-  return newSubmission;
 }
 
-export function getSubmissions(): ExamSubmission[] {
-  if (typeof window === 'undefined') return [];
-  const data = localStorage.getItem(SUBMISSIONS_KEY);
-  return data ? JSON.parse(data) : [];
+export async function getSubmissions(): Promise<ExamSubmission[]> {
+  try {
+    const teacherId = typeof window !== 'undefined' ? localStorage.getItem('teacherId') : null;
+    const url = teacherId ? `/api/submissions?teacherId=${teacherId}` : '/api/submissions';
+    
+    const response = await fetch(url, {
+      cache: 'no-store',
+    });
+    
+    if (!response.ok) return [];
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching submissions:', error);
+    return [];
+  }
 }
 
-export function getSubmissionsByExamId(examId: string): ExamSubmission[] {
-  const submissions = getSubmissions();
+export async function getSubmissionsByExamId(examId: string): Promise<ExamSubmission[]> {
+  const submissions = await getSubmissions();
   return submissions.filter(s => s.examId === examId);
 }
 
-export function getSubmissionsByStudentId(studentId: string): ExamSubmission[] {
-  const submissions = getSubmissions();
+export async function getSubmissionsByStudentId(studentId: string): Promise<ExamSubmission[]> {
+  const submissions = await getSubmissions();
   return submissions.filter(s => s.studentId === studentId);
 }
 

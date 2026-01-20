@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
@@ -18,6 +18,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -28,6 +29,43 @@ const navItems = [
 
 export function SidebarNav() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      // Get teacher ID before clearing
+      const teacherId = localStorage.getItem('teacherId');
+      const teacherName = localStorage.getItem('teacherName');
+      
+      if (teacherId) {
+        // Clear all teacher-specific data from server
+        await fetch('/api/teacher/clear', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ teacherId }),
+        });
+      }
+      
+      // Clear localStorage
+      localStorage.removeItem('teacherId');
+      localStorage.removeItem('teacherName');
+      localStorage.removeItem('teacherEmail');
+      
+      toast({
+        title: "✅ Logged Out Successfully",
+        description: `Goodbye ${teacherName || 'Teacher'}! Your session data has been cleared.`,
+      });
+      
+      router.push('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast({
+        variant: "destructive",
+        title: "Logout Error",
+        description: "There was an issue logging out. Please try again.",
+      });
+    }
+  };
 
   return (
     <TooltipProvider>
@@ -82,13 +120,13 @@ export function SidebarNav() {
           </Tooltip>
            <Tooltip>
             <TooltipTrigger asChild>
-              <Link
-                href="/"
+              <button
+                onClick={handleLogout}
                 className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-100 text-red-700 transition-all hover:bg-red-200 hover:scale-110 border border-red-300"
               >
                 <LogOut className="h-5 w-5" />
                 <span className="sr-only">Logout</span>
-              </Link>
+              </button>
             </TooltipTrigger>
             <TooltipContent side="right" className="bg-red-900 text-white border-red-700">
               Logout

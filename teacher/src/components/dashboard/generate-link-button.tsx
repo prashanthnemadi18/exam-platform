@@ -20,9 +20,11 @@ export function GenerateLinkButton() {
   const [registrationLink, setRegistrationLink] = useState("");
 
   useEffect(() => {
-    // Generate link using current origin
+    // Generate link using current origin with teacher ID
     if (typeof window !== 'undefined') {
-      setRegistrationLink(`${window.location.origin}/register`);
+      const teacherId = localStorage.getItem('teacherId');
+      const baseUrl = `${window.location.origin}/register`;
+      setRegistrationLink(teacherId ? `${baseUrl}?teacherId=${teacherId}` : baseUrl);
     }
   }, []);
 
@@ -35,16 +37,35 @@ export function GenerateLinkButton() {
   };
 
   const shareViaWhatsApp = () => {
-    const message = `🎓 *Student Registration - AssessAI*
+    // Get teacher info from localStorage or session
+    const teacherName = typeof window !== 'undefined' ? localStorage.getItem('teacherName') || 'Your Teacher' : 'Your Teacher';
+    const teacherEmail = typeof window !== 'undefined' ? localStorage.getItem('teacherEmail') || '' : '';
+    
+    const message = `🎓 *Online Examination Platform*
 
-Hello! You're invited to register for upcoming exams.
+Dear Student,
 
-📝 Registration Link:
+You are cordially invited to register for the upcoming online examinations.
+
+🔗 *Registration Link:*
 ${registrationLink}
 
-✅ Click the link to complete your registration.
+📝 *How to Register:*
+1. Click the link above
+2. Fill in your details (Name, USN, Email, Semester)
+3. Submit the form
+4. You'll receive exam links from your teacher
 
-Thank you!`;
+⚠️ *Important Notes:*
+• Register with your email
+• Use your correct USN (University Seat Number)
+• Keep your registration details safe
+• Anti-cheating measures are active during exams
+
+📧 *Contact Your Teacher:*
+*Name:* ${teacherName}${teacherEmail ? `\n*Email:* ${teacherEmail}` : ''}
+
+For any queries, please contact your teacher.`;
     const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
     toast({
@@ -54,8 +75,35 @@ Thank you!`;
   };
 
   const shareViaEmail = () => {
-    const subject = "Student Registration - AssessAI";
-    const body = `Hello,\n\nYou're invited to register for upcoming exams on AssessAI.\n\nRegistration Link: ${registrationLink}\n\nPlease click the link above to complete your registration.\n\nThank you!`;
+    // Get teacher info from localStorage or session
+    const teacherName = typeof window !== 'undefined' ? localStorage.getItem('teacherName') || 'Your Teacher' : 'Your Teacher';
+    const teacherEmail = typeof window !== 'undefined' ? localStorage.getItem('teacherEmail') || '' : '';
+    
+    const subject = "Invitation: Register for Online Examinations";
+    const body = `Dear Student,
+
+You are cordially invited to register for the upcoming online examinations.
+
+REGISTRATION LINK:
+${registrationLink}
+
+HOW TO REGISTER:
+1. Click the registration link above
+2. Fill in your details (Name, USN, Email, Semester)
+3. Submit the form
+4. You'll receive exam links from your teacher
+
+IMPORTANT NOTES:
+- Register with your email
+- Use your correct USN (University Seat Number)
+- Keep your registration details safe
+- Anti-cheating measures are active during exams
+- Tab switching during exams will result in auto-submission
+
+CONTACT YOUR TEACHER:
+Name: ${teacherName}${teacherEmail ? `\nEmail: ${teacherEmail}` : ''}
+
+For any queries, please contact your teacher.`;
     const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = mailtoUrl;
     toast({
@@ -67,9 +115,13 @@ Thank you!`;
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button>
-          <Share2 className="mr-2 h-4 w-4" />
-          Generate Link
+        <Button
+          size="icon"
+          variant="outline"
+          className="h-12 w-12 rounded-full border-2 border-purple-300 bg-white/90 backdrop-blur-sm text-purple-800 hover:bg-purple-50 font-semibold shadow-lg hover:shadow-xl transition-all"
+          title="Generate Link"
+        >
+          <Share2 className="h-5 w-5" />
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
