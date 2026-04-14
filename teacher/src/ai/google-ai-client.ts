@@ -40,7 +40,7 @@ export async function generateQuestionsWithGoogleAI(
   const model = genAI.getGenerativeModel({ 
     model: 'gemini-flash-latest',
     generationConfig: {
-      temperature: 0.9,
+      temperature: 0.9, 
       topP: 0.95,
       topK: 40,
       maxOutputTokens: 8192,

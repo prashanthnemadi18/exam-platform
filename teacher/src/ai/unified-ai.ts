@@ -7,6 +7,7 @@ import { generateQuestionsWithOpenAI, QuestionGenerationParams, GeneratedQuestio
 import { generateQuestionsWithClaude } from './claude-client';
 import { generateQuestionsWithFreeAI } from './free-ai-client';
 import { generateQuestionsWithGoogleAI, isGoogleAIAvailable } from './google-ai-client';
+import { generateQuestionsWithGroq, isGroqAvailable, generateChatWithGroq } from './groq-client';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export interface AIQuestionParams {
@@ -51,6 +52,24 @@ export async function generateQuestions(params: AIQuestionParams): Promise<Gener
     }
   } else {
     console.log('⚠️ Google AI not available - API key not configured');
+  }
+
+  // Try Groq SECOND (if configured) - Ultra-fast inference
+  if (isGroqAvailable()) {
+    try {
+      console.log('⚡ Using Groq (Ultra-Fast) for REAL-TIME question generation...');
+      const questions = await generateQuestionsWithGroq(normalizedParams);
+      if (questions && questions.length > 0) {
+        console.log(`✅ SUCCESS! Groq generated ${questions.length} UNIQUE real-time questions`);
+        return questions;
+      } else {
+        console.warn('⚠️ Groq returned empty questions array');
+      }
+    } catch (error: any) {
+      console.error('❌ Groq failed:', error.message || error);
+    }
+  } else {
+    console.log('⚠️ Groq not available - API key not configured');
   }
 
   // Try Claude Sonnet (if configured)
@@ -100,7 +119,10 @@ export async function generateQuestions(params: AIQuestionParams): Promise<Gener
 
 
 
-export function getAvailableAIProvider(): 'claude' | 'openai' | 'google' | 'none' {
+export function getAvailableAIProvider(): 'groq' | 'claude' | 'openai' | 'google' | 'none' {
+  if (process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY) {
+    return 'groq';
+  }
   if (process.env.ANTHROPIC_API_KEY || process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY) {
     return 'claude';
   }
@@ -138,6 +160,24 @@ export async function generateChatResponse(params: ChatParams): Promise<string> 
       }
     } catch (error: any) {
       console.error('❌ Google AI chat failed:', error.message || error);
+    }
+  }
+
+  // Try Groq SECOND (if configured) - Ultra-fast
+  if (isGroqAvailable()) {
+    try {
+      console.log('⚡ Using Groq for chat response...');
+      const response = await generateChatWithGroq({
+        systemPrompt: params.systemPrompt,
+        userMessage: params.userMessage,
+        conversationHistory: params.conversationHistory,
+      });
+      if (response) {
+        console.log('✅ Groq chat response generated');
+        return response;
+      }
+    } catch (error: any) {
+      console.error('❌ Groq chat failed:', error.message || error);
     }
   }
 
