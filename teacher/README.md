@@ -1,5 +1,22 @@
 # 🎓 AssessAI - AI-Powered Online Examination Platform
 
+[![GitHub stars](https://img.shields.io/github/stars/prashanthnemadi18/exam-platform?style=social)](https://github.com/prashanthnemadi18/exam-platform)
+[![GitHub forks](https://img.shields.io/github/forks/prashanthnemadi18/exam-platform?style=social)](https://github.com/prashanthnemadi18/exam-platform/fork)
+[![GitHub issues](https://img.shields.io/github/issues/prashanthnemadi18/exam-platform)](https://github.com/prashanthnemadi18/exam-platform/issues)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+> Enterprise-grade online examination platform with AI-powered proctoring, face detection, and cheating prevention
+
+## 🌟 Latest Updates
+
+**Version 2.0.0** - AI Proctoring & Face Detection
+- ✅ Real-time face detection with TensorFlow.js
+- ✅ Smart proctoring with behavior analysis
+- ✅ MongoDB database integration
+- ✅ Groq AI support for ultra-fast inference
+- ✅ Identity verification system
+- ✅ Emotion and gaze tracking
+
 ## Overview
 
 AssessAI is a complete online examination platform that uses AI to generate real-time exam questions for any subject and topic. Teachers can create exams in minutes, and students can take them on any device.
