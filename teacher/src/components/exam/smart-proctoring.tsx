@@ -396,7 +396,7 @@ export function SmartProctoring({ onCheatingDetected, isActive }: SmartProctorin
   // Draw detections on canvas
   const drawDetections = (
     canvas: HTMLCanvasElement,
-    detections: faceapi.WithFaceExpressions<faceapi.WithFaceLandmarks<faceapi.WithFaceDescriptor<faceapi.DetectSingleFaceResult>>>[], 
+    detections: any[], 
     displaySize: { width: number; height: number }
   ) => {
     const resizedDetections = faceapi.resizeResults(detections, displaySize);
@@ -441,7 +441,7 @@ export function SmartProctoring({ onCheatingDetected, isActive }: SmartProctorin
         ctx.fillStyle = color;
         ctx.font = '14px Arial';
         ctx.fillText(
-          `${dominant[0]}: ${Math.round(dominant[1] * 100)}%`,
+          `${dominant[0]}: ${Math.round((dominant[1] as number) * 100)}%`,
           box.x,
           box.y + box.height + 20
         );
